@@ -1,0 +1,23 @@
+name: Clean up feature branch after merge to dev
+
+on:
+  pull_request:
+    types: [closed]
+    branches: [dev]
+
+jobs:
+  cleanup:
+    if: >-
+      github.event.pull_request.merged == true &&
+      startsWith(github.event.pull_request.head.ref, 'feature/')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Delete feature branch
+        run: |
+          BRANCH="${{ github.event.pull_request.head.ref }}"
+          gh api -X DELETE "repos/${{ github.repository }}/git/refs/heads/$BRANCH" \
+            || echo "Warning: branch may already be deleted."
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
