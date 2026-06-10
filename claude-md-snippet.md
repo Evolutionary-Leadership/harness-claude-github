@@ -45,16 +45,23 @@ The full lifecycle from idea to merged feature is automated via GitHub Actions.
 
 ### 1. Starting a new feature
 
-Every new chat on a `claude/` branch is automatically treated as a new
-feature, no `/feature` prefix needed. Just describe what you want to build.
+Every new chat on a `claude/` branch is treated as a new feature, no
+`/feature` prefix needed. Just describe what you want to build.
 
-On session start, the harness automatically:
-1. Pushes an init commit to trigger the GitHub Action
-2. The Action derives the feature name (strip `claude/` prefix and
-   `-<sessionId>` suffix) and creates `feature/<name>` from dev
+The session branch starts with a random codename
+(`claude/<adjective-scientist>-<id>`). Before the first push, Claude names
+the feature so the branch describes the work:
 
-You can still use `/feature <description>` explicitly if you prefer, but
-it's no longer required.
+1. Claude derives a short kebab-case slug from your task and runs
+   `bash .claude/scripts/set-feature-name.sh <slug>`. This writes
+   `.harness-feature`, commits it, and pushes.
+2. That push triggers the GitHub Action, which resolves the feature name
+   (the slug in `.harness-feature`, or the codename if it is missing) and
+   creates `feature/<name>` from dev.
+
+If naming is skipped, the first code push still works: the feature branch
+falls back to the random codename. You can also use `/feature <description>`
+explicitly to name and start in one step.
 
 ### 2. Pushing code
 
@@ -125,11 +132,12 @@ Run `/getting-started` to see all skills, or use these directly:
 - `/deps`: handle Dependabot PRs
 - `/continue`: resume in-progress feature
 - `/rollback`: revert bad deploy
-- `/chat`: think and brainstorm without modifying the repo (the session-start
-  hook still creates an empty `feature/<name>` branch on GitHub; pair with
-  `/endchat` to clean up)
+- `/chat`: think and brainstorm without modifying the repo (a pure chat
+  session pushes nothing, so it usually leaves no `feature/<name>` branch to
+  clean up; only run `/endchat` if the session pushed at some point)
 - `/endchat`: clean up after `/chat` (deletes the orphaned `feature/<name>`
-  branch and switches local back to `dev`)
+  branch left behind by a session that pushed, and switches local back to
+  `dev`)
 
 ## Dependency management
 

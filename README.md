@@ -1,4 +1,4 @@
-> Generated from `evolutionary-leadership/harness-forge@e26cbd2`. Do not edit here. Edit in the source repo.
+> Generated from `evolutionary-leadership/harness-forge@7618c24`. Do not edit here. Edit in the source repo.
 
 # harness-claude-github
 
@@ -23,6 +23,13 @@ opinionated Claude Code plus GitHub Actions feature flow on top.
 
 - A `dev` and `main` branch convention with auto-merge for features
   and a release flow that promotes `dev` to `main`.
+- Feature branches named after the work, not the random session codename.
+  Claude derives a kebab-case slug from your task and runs
+  `bash .claude/scripts/set-feature-name.sh <slug>` before its first push;
+  that slug (stored in `.harness-feature`) becomes `feature/<name>`. If
+  naming is skipped, the first push falls back to the codename. See
+  `.claude/HARNESS.md` ("Feature naming") for the resolver and fallback
+  rules.
 - A `.claude/` directory with skills, hooks, and agents tuned for the
   feature lifecycle (`/feature`, `/mergedev`, `/review`, `/release`,
   and friends).

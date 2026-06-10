@@ -172,17 +172,17 @@ Tell the user:
 
 ### 9. Best-effort orphan branch cleanup
 
-The session-start hook auto-creates a `feature/<name>` branch for every
-`claude/<name>` session, and the source `claude/<name>` branch is
-normally deleted by `claude-to-feature-branch.yml`. Since the release
-skill bypasses the feature-branch chain entirely, neither cleanup is
+A `claude/<name>` session creates a `feature/<name>` branch only once it
+pushes (the slug commit from `set-feature-name.sh`, or any code push);
+the source `claude/<name>` branch is then normally deleted by
+`claude-to-feature-branch.yml`. Since the release skill bypasses the
+feature-branch chain entirely, if such a branch exists neither cleanup is
 guaranteed to have happened.
 
 Attempt deletion, but treat it as best-effort:
 
     if [[ "$CURRENT_BRANCH" == claude/* ]]; then
-      WITHOUT_PREFIX="${CURRENT_BRANCH#claude/}"
-      FEATURE_NAME="${WITHOUT_PREFIX%-*}"
+      FEATURE_NAME=$(bash .claude/scripts/resolve-feature-name.sh "$CURRENT_BRANCH")
       git push origin --delete "feature/$FEATURE_NAME" 2>/dev/null || true
       git push origin --delete "$CURRENT_BRANCH" 2>/dev/null || true
     fi

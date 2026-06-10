@@ -17,17 +17,57 @@ and synced from there into this template repo on every harness release.
 ### Branch naming drives everything
 
 ```
-claude/<feature>-<sessionId>   ← you work here
+claude/<codename>-<sessionId>  ← you work here (random codename)
+       ↓ first push: slug commit from set-feature-name.sh, or any code push
        ↓ (GitHub Action)
-feature/<feature>              ← created automatically from dev
+feature/<name>                 ← created automatically from dev
        ↓ (/mergedev)
 dev                            ← PR auto-merged
 ```
 
+- The session branch starts with a random codename
+  (`claude/<adjective-scientist>-<id>`). To get a meaningful name, Claude
+  runs `bash .claude/scripts/set-feature-name.sh <slug>` as its first
+  action; it writes `.harness-feature` and pushes.
+- The feature name is resolved as: use the slug in `.harness-feature` if
+  present and valid, otherwise fall back to the codename (the `claude/`
+  prefix and `-<sessionId>` suffix stripped). See "Feature naming" below.
 - Pushing to a `claude/` branch triggers the Action that creates/updates
-  the corresponding `feature/` branch.
-- The feature name is derived by stripping the `claude/` prefix and
-  `-<sessionId>` suffix: `claude/dark-mode-abc123` → `feature/dark-mode`.
+  the corresponding `feature/<name>` branch.
+
+### Feature naming
+
+Feature branches are named after the work, not the random session codename.
+The mechanism:
+
+- **Source of truth:** a committed file `.harness-feature` holding a
+  kebab-case slug. Claude sets it early via
+  `bash .claude/scripts/set-feature-name.sh <slug>`, which sanitizes the
+  input, writes the file, commits, and pushes.
+- **Resolution (everywhere):** use the slug if `.harness-feature` is
+  present and valid (`^[a-z0-9][a-z0-9-]{0,40}$`, and not `dev` or `main`),
+  otherwise fall back to the codename. The shared resolver is
+  `.claude/scripts/resolve-feature-name.sh`; the workflows
+  (`claude-to-feature-branch.yml`, `claude-mergedev.yml`) apply the
+  identical check.
+- **Set it before the first push** so the feature branch is created with the
+  good name from the start.
+- **Graceful fallback:** if `set-feature-name.sh` is never called, the first
+  code push still creates `feature/<codename>`. Naming is an improvement,
+  never a requirement.
+- **No leak to dev:** `.harness-feature` is removed by the mergedev workflow
+  before the merge, so a future session cloned from dev never inherits a
+  stale name. For this reason it must stay out of `.gitignore` (the
+  workflows read it from the commit).
+
+**Where do I look for X:**
+
+| What | Where |
+|------|-------|
+| Provisioning trigger | A `claude/` push (the slug commit, or first code push) |
+| Feature branch | `feature/<name>` |
+| CI checks | Only on the PR to `dev`/`main` |
+| Current feature name | `bash .claude/scripts/resolve-feature-name.sh` |
 
 ### Signal files
 
@@ -40,6 +80,13 @@ dev                            ← PR auto-merged
 - **`.release-description.md`**: Committing this file triggers the release
   workflow to create a PR from `dev` → `main`, tag a version, and create a
   GitHub Release. The `/release` skill writes this file.
+- **`.harness-feature`**: A committed one-line kebab-case slug naming this
+  feature, written by `set-feature-name.sh`. The workflows and shell
+  scripts resolve the feature name from it (with a codename fallback). It
+  is removed before the merge to dev (by `claude-mergedev.yml`) so the name
+  never leaks onto dev and into the next session. Unlike the other signal
+  files it must stay tracked (not in `.gitignore`), because the workflows
+  read it from the commit.
 
 ### `.harness-version` configuration
 
@@ -75,11 +122,13 @@ reviewers: teammate1, teammate2
 ### Hooks
 
 - **SessionStart**: Runs `.claude/scripts/session-start.sh` on every new
-  session. On a `claude/` branch, it automatically initializes the feature:
-  if the feature branch exists, it merges previous work; if not, it pushes
-  an init commit to trigger the GitHub Action (creates feature branch).
-  This means `/feature` is no longer required to start a new chat, just
-  describe what you want to build.
+  session. On a `claude/` branch, it resolves the feature name and, if a
+  matching `feature/<name>` branch already exists, merges previous work. It
+  no longer pushes an init commit: a fresh session just prints naming
+  guidance. The feature branch is created on Claude's first push, ideally
+  the `set-feature-name.sh` slug commit (see "Feature naming"). You do not
+  need `/feature` to start; just describe what you want to build and Claude
+  names the session before its first push.
 - **PreToolUse (Write/Edit/Bash)**: Runs
   `.claude/hooks/prevent-em-dash.sh`, which blocks any write that contains
   a U+2014 em dash.
@@ -139,6 +188,8 @@ These files are maintained by the harness and replaced on
 | `.github/workflows/feature-merge-cleanup.yml` | Deletes feature branch after merge to dev |
 | `.claude/scripts/session-start.sh` | Session startup hook |
 | `.claude/scripts/list-skills.sh` | Skill discovery script |
+| `.claude/scripts/resolve-feature-name.sh` | Resolves the feature name (slug from `.harness-feature`, else session codename); shared by the hooks, scripts, and workflows |
+| `.claude/scripts/set-feature-name.sh` | Names the session's feature: sanitizes a slug, writes `.harness-feature`, commits, and pushes to trigger branch creation |
 | `.claude/hooks/prevent-em-dash.sh` | Blocks writes containing U+2014 em dashes |
 | `.claude/skills/getting-started/SKILL.md` | Orientation skill |
 | `.claude/skills/feature/SKILL.md` | `/feature` skill |

@@ -19,10 +19,11 @@ with `review: true` in frontmatter so the workflow skips auto-merge.
 ### 1. Determine the feature name
 
     BRANCH=$(git branch --show-current)
-    # Strip claude/ prefix and -<sessionId> suffix
-    # e.g. claude/dark-mode-abc123 → dark-mode
+    FEATURE_NAME=$(bash .claude/scripts/resolve-feature-name.sh "$BRANCH")
+    FEATURE_BRANCH="feature/$FEATURE_NAME"
 
-Derive the feature branch name: `feature/<name>`.
+This prefers the slug in `.harness-feature` (set via `set-feature-name.sh`)
+and falls back to the random session codename, matching the workflows.
 
 ### 2. Gather all changes
 
